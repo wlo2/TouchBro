@@ -1,0 +1,30 @@
+{
+  "object" : {
+    "artifacts" : [
+
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "openmultitouchsupport",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/KrishKrosh/OpenMultitouchSupport.git",
+          "name" : "OpenMultitouchSupport"
+        },
+        "state" : {
+          "checkoutState" : {
+            "branch" : "main",
+            "revision" : "fec869d8f349d0f8f0baa2d1f6c7dcbe6abc5d7d"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "OpenMultitouchSupport"
+      }
+    ],
+    "prebuilts" : [
+
+    ]
+  },
+  "version" : 7
+}

@@ -1,0 +1,317 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.TouchBro-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/sources",
+      "importPath" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/ForceClickMonitor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/MultitouchBridge.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/SettingsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/Shortcut.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/TouchBroApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "TouchBro",
+      "moduleOutputPath" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/Modules/TouchBro.swiftmodule",
+      "objects" : [
+        "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/ForceClickMonitor.swift.o",
+        "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/MultitouchBridge.swift.o",
+        "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/SettingsView.swift.o",
+        "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/Shortcut.swift.o",
+        "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/TouchBroApp.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "TouchBro_main",
+        "-color-diagnostics",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "touchbro"
+      ],
+      "outputFileMapPath" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/ForceClickMonitor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/MultitouchBridge.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/SettingsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/Shortcut.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/TouchBroApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/Modules/TouchBro.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/ForceClickMonitor.swift",
+        "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/MultitouchBridge.swift",
+        "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/SettingsView.swift",
+        "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/Shortcut.swift",
+        "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/TouchBroApp.swift"
+      ],
+      "tempsPath" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "TouchBro" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "TouchBro",
+      "-package-name",
+      "touchbro",
+      "-c",
+      "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/ForceClickMonitor.swift",
+      "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/MultitouchBridge.swift",
+      "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/SettingsView.swift",
+      "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/Shortcut.swift",
+      "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/TouchBroApp.swift",
+      "-I",
+      "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "TouchBro_main",
+      "-color-diagnostics",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "touchbro",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "TouchBro" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro-entitlement.plist"
+    },
+    "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/ForceClickMonitor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/MultitouchBridge.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/SettingsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/Shortcut.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/Sources/TouchBro/TouchBroApp.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/sources"
+    },
+    "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/ForceClickMonitor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/MultitouchBridge.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/SettingsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/Shortcut.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.build/TouchBroApp.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/TouchBro.product/Objects.LinkFileList"
+    },
+    "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/x00x/Data/Documents2/git/TouchBro/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+    }
+  }
+}
