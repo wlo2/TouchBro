@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+.cache/
+TouchBro.app/
+TouchBro.dmg
+*.pcm
+*.swiftmodule
+*.timestamp
+manifest.db*
+icon.png.sb-*
