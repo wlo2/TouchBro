@@ -18,6 +18,7 @@
 - Force-click detection via `MultitouchSupport` Apple's private framework.
 - Configurable shortcut key + modifiers.
 - Autostart toggle.
+![Main_screen](image.png)
 
 > [!NOTE]
 > **What is `MultitouchSupport`?**
