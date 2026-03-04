@@ -18,11 +18,9 @@
 - Force-click detection via `MultitouchSupport` Apple's private framework.
 - Configurable shortcut key + modifiers.
 - Autostart toggle.
-```html
 <p align="center">
   <img src="image.png" alt="Main_screen" width="400">
 </p>
-```
 
 > [!NOTE]
 > **What is `MultitouchSupport`?**
