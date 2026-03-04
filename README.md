@@ -1,13 +1,16 @@
 <p align="center">
-  <img src="icon.png" alt="TouchBro Logo" width="160">
+  <img src="icon.png" alt="TouchBro Logo" width="128">
 </p>
-# TouchBro
 
-Minimal Apple Silicon native menu bar app that maps a **trackpad force click** to a configurable keyboard shortcut (default: `Cmd+C`).
+<h1 align="center">TouchBro</h1>
 
-Completelly free and opensource
+<p align="center">
+  Minimal Apple Silicon native menu bar app that maps a <b>trackpad force click</b> to a configurable keyboard shortcut (default: <code>Cmd+C</code>).
+</p>
 
-Inspired by [BetterTouchTool](https://folivora.ai/).
+<p align="center">
+  Completely free and open source • Inspired by <a href="https://folivora.ai/">BetterTouchTool</a>
+</p>
 
 ## Features
 
