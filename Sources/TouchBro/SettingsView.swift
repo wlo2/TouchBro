@@ -2,6 +2,7 @@ import SwiftUI
 import ApplicationServices
 import AppKit
 import ServiceManagement
+import UniformTypeIdentifiers
 
 extension Notification.Name {
     static let touchBroPermissionsChanged = Notification.Name("TouchBroPermissionsChanged")
@@ -56,6 +57,10 @@ struct SettingsView: View {
             PermissionsView()
 
             Divider()
+            
+            ExceptionsView()
+            
+            Divider()
 
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Start With macOS", isOn: Binding(
@@ -77,7 +82,7 @@ struct SettingsView: View {
                 Link("GitHub", destination: URL(string: "https://github.com/wlo2/TouchBro")!)
                     .font(.footnote)
 
-                Text("v0.9")
+                Text("v1.0")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -146,6 +151,77 @@ private struct PermissionsView: View {
 
     private func refresh() {
         accessibilityGranted = Permissions.accessibilityGranted
+    }
+}
+
+private struct ExceptionsView: View {
+    @State private var excludedApps: [String] = []
+    @State private var selection: String?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Exceptions")
+                .font(.headline)
+            
+            Text("TouchBro will not trigger in these applications:")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            
+            List(selection: $selection) {
+                ForEach(excludedApps, id: \.self) { bundleId in
+                    Text(bundleId)
+                }
+            }
+            .frame(height: 100)
+            .border(Color.secondary.opacity(0.2))
+            
+            HStack(spacing: 12) {
+                Button("+ Add App") {
+                    DispatchQueue.main.async {
+                        let panel = NSOpenPanel()
+                        if #available(macOS 11.0, *) {
+                            panel.allowedContentTypes = [.application]
+                        } else {
+                            panel.allowedFileTypes = ["app"]
+                        }
+                        panel.allowsMultipleSelection = false
+                        panel.canChooseDirectories = false
+                        panel.canChooseFiles = true
+                        
+                        NSApp.activate(ignoringOtherApps: true)
+                        
+                        if panel.runModal() == .OK, let url = panel.url {
+                            if let bundle = Bundle(url: url), let bundleId = bundle.bundleIdentifier {
+                                if !excludedApps.contains(bundleId) {
+                                    excludedApps.append(bundleId)
+                                    save()
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Button("- Remove Selected") {
+                    if let sel = selection {
+                        excludedApps.removeAll { $0 == sel }
+                        selection = nil
+                        save()
+                    }
+                }
+                .disabled(selection == nil)
+            }
+        }
+        .onAppear {
+            load()
+        }
+    }
+    
+    private func load() {
+        excludedApps = UserDefaults.standard.stringArray(forKey: DefaultsKeys.excludedApps) ?? []
+    }
+    
+    private func save() {
+        UserDefaults.standard.set(excludedApps, forKey: DefaultsKeys.excludedApps)
     }
 }
 

@@ -7,6 +7,7 @@ enum DefaultsKeys {
     static let shortcutModifiers = "shortcutModifiers"
     static let isEnabled = "isEnabled"
     static let debugLogging = "debugLogging"
+    static let excludedApps = "excludedApps"
 }
 
 struct ShortcutModifiers: OptionSet {

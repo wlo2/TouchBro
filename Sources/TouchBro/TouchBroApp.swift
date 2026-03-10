@@ -59,7 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DefaultsKeys.shortcutKey: "C",
             DefaultsKeys.shortcutModifiers: ShortcutModifiers.command.rawValue,
             DefaultsKeys.isEnabled: true,
-            DefaultsKeys.debugLogging: false
+            DefaultsKeys.debugLogging: false,
+            DefaultsKeys.excludedApps: ["com.apple.finder"]
         ])
 
         if defaults.object(forKey: DefaultsKeys.isEnabled) == nil {
@@ -143,8 +144,8 @@ final class SettingsWindowController {
         let window = NSWindow(contentViewController: hostingController)
         window.title = "TouchBro Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 520, height: 460))
-        window.minSize = NSSize(width: 520, height: 460)
+        window.setContentSize(NSSize(width: 520, height: 620))
+        window.minSize = NSSize(width: 520, height: 620)
         window.isReleasedWhenClosed = false
         window.center()
         return window

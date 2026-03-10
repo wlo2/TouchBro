@@ -17,6 +17,7 @@
 - Menu bar app with a single settings window.
 - Force-click detection via `MultitouchSupport` Apple's private framework.
 - Configurable shortcut key + modifiers.
+- **App Exceptions:** Exclude specific applications from triggering the shortcut (e.g., Finder is excluded by default).
 - Autostart toggle.
 <p align="center">
   <img src="image.png" alt="Main_screen" width="400">
@@ -53,6 +54,15 @@ xattr -dr com.apple.quarantine /Applications/TouchBro.app
 > 2. **Simulate keys:** Send synthetic `Cmd+C` or other keystrokes on your behalf.
 > TouchBro never records your keystrokes or sends data anywhere; it only uses this to bridge your force click to the copy shortcut. App has no internet access.
 
+
+## App Exceptions
+
+You can prevent TouchBro from activating in specific applications (e.g., games or apps that already use force-click for native features).  
+
+1. Open **Settings**.
+2. Scroll to the **Exceptions** list.
+3. Click **+ Add App** to select an application bundle (Finder is excluded by default).
+4. Any app in this list will be ignored by TouchBro.
 
 ## Local build
 

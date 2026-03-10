@@ -376,6 +376,14 @@ final class ForceClickMonitor: ObservableObject {
 
     private func handleFrameLocked(maxPressure: Float, maxState: Int32, touchCount: Int) {
         guard UserDefaults.standard.bool(forKey: DefaultsKeys.isEnabled) else { return }
+        
+        if let currentApp = NSWorkspace.shared.frontmostApplication?.bundleIdentifier {
+            let excludedApps = UserDefaults.standard.stringArray(forKey: DefaultsKeys.excludedApps) ?? []
+            if excludedApps.contains(currentApp) {
+                return
+            }
+        }
+        
         guard maxPressure > 0 else { return }
         guard leftButtonDown else { return }
 
