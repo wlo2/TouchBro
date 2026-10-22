@@ -82,7 +82,7 @@ struct SettingsView: View {
                 Link("GitHub", destination: URL(string: "https://github.com/wlo2/TouchBro")!)
                     .font(.footnote)
 
-                Text("v1.0")
+                Text("v1.0.5")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }

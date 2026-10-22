@@ -404,7 +404,8 @@ final class ForceClickMonitor: ObservableObject {
         pressBaseline = baseline
         let ratio = pressPeakPressure / baseline
         let delta = pressPeakPressure - baseline
-        let forceDetected = (ratio >= forceRatioThreshold && delta >= minimumForceDelta) || maxState >= 5
+        // MTTouch.state is the touch phase (4 = touching, 5+ = lifting/lingering), not a force stage, so it can't signal force.
+        let forceDetected = ratio >= forceRatioThreshold && delta >= minimumForceDelta
 
         guard forceDetected else { return }
         guard !triggerInCurrentPress else { return }
