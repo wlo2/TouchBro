@@ -64,6 +64,26 @@ You can prevent TouchBro from activating in specific applications (e.g., games o
 3. Click **+ Add App** to select an application bundle (Finder is excluded by default).
 4. Any app in this list will be ignored by TouchBro.
 
+## Start With macOS
+
+TouchBro can register itself as a login item so it launches automatically after sign-in.
+
+1. Open **Settings**.
+2. Enable **Start With macOS**.
+3. macOS will add TouchBro to your login items using `SMAppService`.
+
+If you turn the toggle off, TouchBro unregisters itself from login items.
+
+## Settings Overview
+
+The settings window currently includes:
+
+- Force-click enable/disable toggle
+- Shortcut key and modifier configuration
+- Accessibility permission status and shortcut to System Settings
+- App exceptions list
+- Start With macOS toggle
+
 ## Local build
 
 From repo root:
