@@ -72,6 +72,8 @@ final class MultitouchBridge {
     private var deviceList: CFArray?
     private var devices: [MTDeviceRef] = []
     private var isRunning = false
+    // Set by start()/stop(): lets wake and device-added events start a bridge that found no device yet.
+    private var wantsRunning = false
     private var deviceNotifyPort: IONotificationPortRef?
     private var deviceAddedIterator: io_iterator_t = 0
 
@@ -87,6 +89,7 @@ final class MultitouchBridge {
 
     func start() {
         stateQueue.async {
+            self.wantsRunning = true
             self.startLocked()
         }
     }
@@ -111,6 +114,7 @@ final class MultitouchBridge {
 
     func stop() {
         stateQueue.async {
+            self.wantsRunning = false
             self.stopLocked()
         }
     }
@@ -164,10 +168,10 @@ final class MultitouchBridge {
     }
 
     private func scheduleRestartLocked(reason: String) {
-        guard isRunning else { return }
+        guard wantsRunning else { return }
         // A device needs a moment after wake or connect before it delivers frames.
         stateQueue.asyncAfter(deadline: .now() + 1.0) {
-            guard self.isRunning else { return }
+            guard self.wantsRunning else { return }
             let capture = self.captureEnabled
             self.stopLocked()
             self.startLocked()

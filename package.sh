@@ -13,7 +13,8 @@ ICON_NAME="AppIcon"
 SIGN_APP="${SIGN_APP:-1}"
 # A stable certificate keeps the Accessibility grant valid across builds; ad-hoc signatures change every build.
 SIGN_IDENTITY="${SIGN_IDENTITY:-TouchBro Dev}"
-RESET_TCC="${RESET_TCC:-1}"
+# RESET_TCC=1 clears the Accessibility grant, to test the first-run flow.
+RESET_TCC="${RESET_TCC:-0}"
 ADHOC=0
 
 for arg in "$@"; do

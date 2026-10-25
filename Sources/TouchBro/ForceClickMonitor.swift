@@ -34,7 +34,7 @@ struct ForcePressDetector {
     }
 }
 
-final class ForceClickMonitor: ObservableObject {
+final class ForceClickMonitor {
     private let minimumTriggerGap: TimeInterval = 0.25
     // A finger lands 0.1-0.3 s before the click; the selection captured then must still count.
     private let landingSelectionMaxAge: TimeInterval = 0.5
@@ -56,7 +56,6 @@ final class ForceClickMonitor: ObservableObject {
 
     private var globalLeftDownMonitor: Any?
     private var globalLeftUpMonitor: Any?
-    private var permissionObservers: [NSObjectProtocol] = []
     private var permissionPollTimer: DispatchSourceTimer?
     private var lastPermissionState: Bool?
 
@@ -78,15 +77,7 @@ final class ForceClickMonitor: ObservableObject {
         refreshPermissionState(reason: "init")
     }
 
-    deinit {
-        removePermissionObservers()
-        removeButtonMonitors()
-        stopPermissionPolling()
-        bridge.setCaptureEnabled(false)
-        bridge.stop()
-    }
-
-    func refreshPermissionState(reason: String = "manual") {
+    func refreshPermissionState(reason: String) {
         bridgeControlQueue.async {
             self.refreshPermissionStateLocked(reason: reason)
         }
@@ -113,37 +104,13 @@ final class ForceClickMonitor: ObservableObject {
     }
 
     private func installPermissionObservers() {
-        let nc = NotificationCenter.default
-
-        let becameActive = nc.addObserver(
+        // Lives as long as the app, so the observer token is never removed.
+        _ = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             self?.refreshPermissionState(reason: "app-became-active")
-        }
-
-        permissionObservers = [becameActive]
-    }
-
-    private func removePermissionObservers() {
-        let nc = NotificationCenter.default
-        for observer in permissionObservers {
-            nc.removeObserver(observer)
-        }
-        permissionObservers.removeAll()
-    }
-
-    private func removeButtonMonitors() {
-        DispatchQueue.main.async {
-            if let globalLeftDownMonitor = self.globalLeftDownMonitor {
-                NSEvent.removeMonitor(globalLeftDownMonitor)
-                self.globalLeftDownMonitor = nil
-            }
-            if let globalLeftUpMonitor = self.globalLeftUpMonitor {
-                NSEvent.removeMonitor(globalLeftUpMonitor)
-                self.globalLeftUpMonitor = nil
-            }
         }
     }
 
@@ -178,12 +145,6 @@ final class ForceClickMonitor: ObservableObject {
         timer.resume()
     }
 
-    private func stopPermissionPolling() {
-        bridgeControlQueue.async {
-            self.stopPermissionPollingLocked()
-        }
-    }
-
     private func stopPermissionPollingLocked() {
         permissionPollTimer?.cancel()
         permissionPollTimer = nil
@@ -195,8 +156,22 @@ final class ForceClickMonitor: ObservableObject {
         leftButtonDown = true
         triggerInCurrentPress = false
         detector.begin(at: now)
-        selectedTextAtPressStart = recentKnownSelectionLocked(now: now, maxAge: landingSelectionMaxAge)
-            ?? fetchSelectedTextFromAX()
+        selectedTextAtPressStart = shouldCaptureSelectionLocked()
+            ? recentKnownSelectionLocked(now: now, maxAge: landingSelectionMaxAge) ?? fetchSelectedTextFromAX()
+            : nil
+    }
+
+    /// TouchBro is on and the front app is not in the exceptions list.
+    private func isActiveForFrontAppLocked() -> Bool {
+        guard UserDefaults.standard.bool(forKey: DefaultsKeys.isEnabled) else { return false }
+        guard let frontApp = NSWorkspace.shared.frontmostApplication?.bundleIdentifier else { return true }
+        let excludedApps = UserDefaults.standard.stringArray(forKey: DefaultsKeys.excludedApps) ?? []
+        return !excludedApps.contains(frontApp)
+    }
+
+    /// The selection is only read when a force click would copy it.
+    private func shouldCaptureSelectionLocked() -> Bool {
+        Shortcut.isCopy && isActiveForFrontAppLocked()
     }
 
     private func endPressLocked() {
@@ -212,7 +187,7 @@ final class ForceClickMonitor: ObservableObject {
     }
 
     private func refreshSelectionCacheLocked() {
-        guard Shortcut.isCopy else {
+        guard shouldCaptureSelectionLocked() else {
             lastKnownSelectedText = nil
             lastKnownSelectionAt = 0
             return
@@ -340,19 +315,9 @@ final class ForceClickMonitor: ObservableObject {
         return nil
     }
 
-    private func recentKnownSelectionLocked(
-        now: TimeInterval = ProcessInfo.processInfo.systemUptime,
-        maxAge: TimeInterval = 1.2
-    ) -> String? {
+    private func recentKnownSelectionLocked(now: TimeInterval, maxAge: TimeInterval) -> String? {
         guard now - lastKnownSelectionAt <= maxAge else { return nil }
         return lastKnownSelectedText
-    }
-
-    private func selectionSnapshotForTriggerLocked(now: TimeInterval) -> String? {
-        if let selectedTextAtPressStart, !selectedTextAtPressStart.isEmpty {
-            return selectedTextAtPressStart
-        }
-        return recentKnownSelectionLocked(now: now, maxAge: 0.20)
     }
 
     private func handleFrameLocked(maxPressure: Float, maxState: Int32, touchCount: Int, landing: Bool) {
@@ -360,22 +325,13 @@ final class ForceClickMonitor: ObservableObject {
 
         guard leftButtonDown else {
             // Grab the selection as the finger lands, before the click can clear it.
-            if landing, now - lastLandingRefreshAt >= 0.1,
-               UserDefaults.standard.bool(forKey: DefaultsKeys.isEnabled) {
+            if landing, now - lastLandingRefreshAt >= 0.1 {
                 lastLandingRefreshAt = now
                 refreshSelectionCacheLocked()
             }
             return
         }
-        guard maxPressure > 0 else { return }
-        guard UserDefaults.standard.bool(forKey: DefaultsKeys.isEnabled) else { return }
-
-        if let currentApp = NSWorkspace.shared.frontmostApplication?.bundleIdentifier {
-            let excludedApps = UserDefaults.standard.stringArray(forKey: DefaultsKeys.excludedApps) ?? []
-            if excludedApps.contains(currentApp) {
-                return
-            }
-        }
+        guard maxPressure > 0, isActiveForFrontAppLocked() else { return }
 
         guard detector.feed(pressure: maxPressure, at: now) else { return }
         guard !triggerInCurrentPress else { return }
@@ -385,7 +341,7 @@ final class ForceClickMonitor: ObservableObject {
         suppressSelectionCaptureUntil = now + 0.35
         lastTriggerTime = now
 
-        let selectedText = selectionSnapshotForTriggerLocked(now: now)
+        let selectedText = selectedTextAtPressStart
         let isCopyShortcut = Shortcut.isCopy
 
         DispatchQueue.main.async {
