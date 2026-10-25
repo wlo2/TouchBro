@@ -103,7 +103,6 @@ final class MultitouchBridge {
 
         deviceList = list
         devices = (list as [AnyObject]).map { Unmanaged.passUnretained($0).toOpaque() }
-        MultitouchCallbackBox.current = self
         for device in devices {
             MTRegisterContactFrameCallback(device, multitouchFrameCallback)
             _ = MTDeviceStart(device, 0)
@@ -128,7 +127,6 @@ final class MultitouchBridge {
         }
         captureEnabled = false
         lastDispatchTime = 0
-        MultitouchCallbackBox.current = nil
         devices = []
         deviceList = nil
         isRunning = false
@@ -212,7 +210,8 @@ final class MultitouchBridge {
             }
 
             // Landing frames are short-lived, so they skip the throttle.
-            let now = CFAbsoluteTimeGetCurrent()
+            // Uptime only moves forward; the wall clock can jump back (e.g. a time sync after wake).
+            let now = ProcessInfo.processInfo.systemUptime
             if !landing && now - lastDispatchTime < 0.03 {
                 return false
             }
@@ -236,10 +235,8 @@ private func drainIterator(_ iterator: io_iterator_t) {
     }
 }
 
-private enum MultitouchCallbackBox {
-    static weak var current: MultitouchBridge?
-}
-
+// The bridge is a singleton, so the C callback reaches it directly; a frame that
+// arrives after stop() is dropped because capture is off by then.
 private let multitouchFrameCallback: MTFrameCallbackFunction = { _, touchesRaw, count, _, _ in
-    MultitouchCallbackBox.current?.onContactFrame(touchesRaw: touchesRaw, count: count)
+    MultitouchBridge.shared.onContactFrame(touchesRaw: touchesRaw, count: count)
 }

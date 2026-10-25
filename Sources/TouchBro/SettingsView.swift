@@ -219,13 +219,7 @@ private struct ExceptionsView: View {
 
 enum Permissions {
     static var accessibilityGranted: Bool {
-        // Some macOS versions report trusted status through only one of these APIs.
-        if AXIsProcessTrusted() {
-            return true
-        }
-        let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let options = [promptKey: false] as CFDictionary
-        return AXIsProcessTrustedWithOptions(options)
+        AXIsProcessTrusted()
     }
 
     static func requestAccessibility() {

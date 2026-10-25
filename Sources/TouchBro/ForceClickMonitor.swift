@@ -39,6 +39,8 @@ final class ForceClickMonitor {
     // A finger lands 0.1-0.3 s before the click; the selection captured then must still count.
     private let landingSelectionMaxAge: TimeInterval = 0.5
     private let axMessagingTimeout: Float = 0.2
+    // Pointer travel (points) after which a press counts as a drag; a still force click wobbles less.
+    private let dragDiscardDistance: CGFloat = 5
 
     private let bridge = MultitouchBridge.shared
     private let stateQueue = DispatchQueue(label: "touchbro.force.state", qos: .utility)
@@ -53,9 +55,11 @@ final class ForceClickMonitor {
     private var lastKnownSelectionAt: TimeInterval = 0
     private var suppressSelectionCaptureUntil: TimeInterval = 0
     private var lastLandingRefreshAt: TimeInterval = 0
+    private var pressDragDistance: CGFloat = 0
 
     private var globalLeftDownMonitor: Any?
     private var globalLeftUpMonitor: Any?
+    private var globalLeftDragMonitor: Any?
     private var permissionPollTimer: DispatchSourceTimer?
     private var lastPermissionState: Bool?
 
@@ -89,6 +93,15 @@ final class ForceClickMonitor {
                 self.globalLeftDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] _ in
                     self?.stateQueue.async {
                         self?.beginPressLocked()
+                    }
+                }
+            }
+
+            if self.globalLeftDragMonitor == nil {
+                self.globalLeftDragMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDragged]) { [weak self] event in
+                    let distance = hypot(event.deltaX, event.deltaY)
+                    self?.stateQueue.async {
+                        self?.trackDragLocked(distance: distance)
                     }
                 }
             }
@@ -156,9 +169,20 @@ final class ForceClickMonitor {
         leftButtonDown = true
         triggerInCurrentPress = false
         detector.begin(at: now)
+        pressDragDistance = 0
         selectedTextAtPressStart = shouldCaptureSelectionLocked()
             ? recentKnownSelectionLocked(now: now, maxAge: landingSelectionMaxAge) ?? fetchSelectedTextFromAX()
             : nil
+    }
+
+    /// A drag selects new text, so the selection saved at mouse-down is stale; without it the
+    /// trigger sends a real Cmd+C, which copies what is selected now.
+    private func trackDragLocked(distance: CGFloat) {
+        guard leftButtonDown else { return }
+        pressDragDistance += distance
+        if pressDragDistance > dragDiscardDistance {
+            selectedTextAtPressStart = nil
+        }
     }
 
     /// TouchBro is on and the front app is not in the exceptions list.
