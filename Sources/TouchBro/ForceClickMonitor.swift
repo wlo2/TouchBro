@@ -2,11 +2,43 @@ import ApplicationServices
 import AppKit
 import Foundation
 
+/// Decides whether one button press becomes a force click, from the pressure frames during it.
+struct ForcePressDetector {
+    static let ratioThreshold: Float = 1.9
+    static let minimumDelta: Float = 170
+    static let warmup: TimeInterval = 0.06
+
+    private(set) var baseline: Float?
+    private(set) var peak: Float = 0
+    private var startedAt: TimeInterval = 0
+
+    mutating func begin(at time: TimeInterval) {
+        baseline = nil
+        peak = 0
+        startedAt = time
+    }
+
+    /// Feeds one frame of the current press; true when the press reads as a force click.
+    mutating func feed(pressure: Float, at time: TimeInterval) -> Bool {
+        peak = max(peak, pressure)
+        guard let current = baseline else {
+            baseline = pressure
+            return false
+        }
+        if time - startedAt < Self.warmup {
+            baseline = min(current, pressure)
+            return false
+        }
+        let base = max(current, 0.001)
+        return peak / base >= Self.ratioThreshold && peak - base >= Self.minimumDelta
+    }
+}
+
 final class ForceClickMonitor: ObservableObject {
-    private let forceRatioThreshold: Float = 1.9
-    private let minimumForceDelta: Float = 170
     private let minimumTriggerGap: TimeInterval = 0.25
-    private let warmupDuration: TimeInterval = 0.06
+    // A finger lands 0.1-0.3 s before the click; the selection captured then must still count.
+    private let landingSelectionMaxAge: TimeInterval = 0.5
+    private let axMessagingTimeout: Float = 0.2
 
     private let bridge = MultitouchBridge.shared
     private let stateQueue = DispatchQueue(label: "touchbro.force.state", qos: .utility)
@@ -15,30 +47,32 @@ final class ForceClickMonitor: ObservableObject {
     private var leftButtonDown = false
     private var triggerInCurrentPress = false
     private var lastTriggerTime: TimeInterval = 0
-    private var pressBaseline: Float?
-    private var pressPeakPressure: Float = 0
-    private var pressStartedAt: TimeInterval = 0
+    private var detector = ForcePressDetector()
     private var selectedTextAtPressStart: String?
     private var lastKnownSelectedText: String?
     private var lastKnownSelectionAt: TimeInterval = 0
     private var suppressSelectionCaptureUntil: TimeInterval = 0
+    private var lastLandingRefreshAt: TimeInterval = 0
 
     private var globalLeftDownMonitor: Any?
     private var globalLeftUpMonitor: Any?
     private var permissionObservers: [NSObjectProtocol] = []
     private var permissionPollTimer: DispatchSourceTimer?
-    private var selectionPollTimer: DispatchSourceTimer?
     private var lastPermissionState: Bool?
 
     init() {
         TouchBroDebugLog.write("ForceClickMonitor init")
         installButtonMonitors()
         installPermissionObservers()
-        startSelectionPolling()
 
-        bridge.onFrame = { [weak self] maxPressure, maxState, touchCount in
+        bridge.onFrame = { [weak self] maxPressure, maxState, touchCount, landing in
             self?.stateQueue.async {
-                self?.handleFrameLocked(maxPressure: maxPressure, maxState: maxState, touchCount: touchCount)
+                self?.handleFrameLocked(
+                    maxPressure: maxPressure,
+                    maxState: maxState,
+                    touchCount: touchCount,
+                    landing: landing
+                )
             }
         }
         refreshPermissionState(reason: "init")
@@ -48,7 +82,6 @@ final class ForceClickMonitor: ObservableObject {
         removePermissionObservers()
         removeButtonMonitors()
         stopPermissionPolling()
-        stopSelectionPolling()
         bridge.setCaptureEnabled(false)
         bridge.stop()
     }
@@ -90,15 +123,7 @@ final class ForceClickMonitor: ObservableObject {
             self?.refreshPermissionState(reason: "app-became-active")
         }
 
-        let permissionsChanged = nc.addObserver(
-            forName: .touchBroPermissionsChanged,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.refreshPermissionState(reason: "permissions-changed")
-        }
-
-        permissionObservers = [becameActive, permissionsChanged]
+        permissionObservers = [becameActive]
     }
 
     private func removePermissionObservers() {
@@ -169,11 +194,9 @@ final class ForceClickMonitor: ObservableObject {
 
         leftButtonDown = true
         triggerInCurrentPress = false
-        pressBaseline = nil
-        pressPeakPressure = 0
-        pressStartedAt = now
-        selectedTextAtPressStart = recentKnownSelectionLocked(now: now, maxAge: 0.20)
-            ?? fetchSelectedTextFromAXOnMainThread()
+        detector.begin(at: now)
+        selectedTextAtPressStart = recentKnownSelectionLocked(now: now, maxAge: landingSelectionMaxAge)
+            ?? fetchSelectedTextFromAX()
     }
 
     private func endPressLocked() {
@@ -181,8 +204,6 @@ final class ForceClickMonitor: ObservableObject {
 
         leftButtonDown = false
         triggerInCurrentPress = false
-        pressBaseline = nil
-        pressPeakPressure = 0
         selectedTextAtPressStart = nil
 
         if !wasTriggered {
@@ -191,7 +212,7 @@ final class ForceClickMonitor: ObservableObject {
     }
 
     private func refreshSelectionCacheLocked() {
-        guard isConfiguredCopyShortcutLocked() else {
+        guard Shortcut.isCopy else {
             lastKnownSelectedText = nil
             lastKnownSelectionAt = 0
             return
@@ -200,7 +221,7 @@ final class ForceClickMonitor: ObservableObject {
         let now = ProcessInfo.processInfo.systemUptime
         guard now >= suppressSelectionCaptureUntil else { return }
 
-        let selectedText = fetchSelectedTextFromAXOnMainThread()
+        let selectedText = fetchSelectedTextFromAX()
         if let selectedText, !selectedText.isEmpty {
             lastKnownSelectedText = selectedText
             lastKnownSelectionAt = now
@@ -210,20 +231,10 @@ final class ForceClickMonitor: ObservableObject {
         }
     }
 
-    private func fetchSelectedTextFromAXOnMainThread() -> String? {
-        if Thread.isMainThread {
-            return fetchSelectedTextFromAX()
-        }
-
-        var result: String?
-        DispatchQueue.main.sync {
-            result = fetchSelectedTextFromAX()
-        }
-        return result
-    }
-
     private func fetchSelectedTextFromAX() -> String? {
         let systemWide = AXUIElementCreateSystemWide()
+        // Set on the system-wide element, this bounds every AX call; the ~6 s default lets a hung app stall us.
+        AXUIElementSetMessagingTimeout(systemWide, axMessagingTimeout)
         if let focusedElement = copyAXElementAttribute(
             from: systemWide,
             attribute: kAXFocusedUIElementAttribute as CFString
@@ -329,13 +340,6 @@ final class ForceClickMonitor: ObservableObject {
         return nil
     }
 
-    private func isConfiguredCopyShortcutLocked() -> Bool {
-        let defaults = UserDefaults.standard
-        let key = (defaults.string(forKey: DefaultsKeys.shortcutKey) ?? "C").uppercased()
-        let modifiers = ShortcutModifiers(rawValue: defaults.integer(forKey: DefaultsKeys.shortcutModifiers))
-        return key == "C" && modifiers == [.command]
-    }
-
     private func recentKnownSelectionLocked(
         now: TimeInterval = ProcessInfo.processInfo.systemUptime,
         maxAge: TimeInterval = 1.2
@@ -351,63 +355,29 @@ final class ForceClickMonitor: ObservableObject {
         return recentKnownSelectionLocked(now: now, maxAge: 0.20)
     }
 
-    private func startSelectionPolling() {
-        stateQueue.async {
-            guard self.selectionPollTimer == nil else { return }
+    private func handleFrameLocked(maxPressure: Float, maxState: Int32, touchCount: Int, landing: Bool) {
+        let now = ProcessInfo.processInfo.systemUptime
 
-            let timer = DispatchSource.makeTimerSource(queue: self.stateQueue)
-            timer.schedule(deadline: .now() + 0.1, repeating: 0.1)
-            timer.setEventHandler { [weak self] in
-                guard let self else { return }
-                guard !self.leftButtonDown else { return }
-                self.refreshSelectionCacheLocked()
+        guard leftButtonDown else {
+            // Grab the selection as the finger lands, before the click can clear it.
+            if landing, now - lastLandingRefreshAt >= 0.1,
+               UserDefaults.standard.bool(forKey: DefaultsKeys.isEnabled) {
+                lastLandingRefreshAt = now
+                refreshSelectionCacheLocked()
             }
-            self.selectionPollTimer = timer
-            timer.resume()
+            return
         }
-    }
-
-    private func stopSelectionPolling() {
-        stateQueue.async {
-            self.selectionPollTimer?.cancel()
-            self.selectionPollTimer = nil
-        }
-    }
-
-    private func handleFrameLocked(maxPressure: Float, maxState: Int32, touchCount: Int) {
+        guard maxPressure > 0 else { return }
         guard UserDefaults.standard.bool(forKey: DefaultsKeys.isEnabled) else { return }
-        
+
         if let currentApp = NSWorkspace.shared.frontmostApplication?.bundleIdentifier {
             let excludedApps = UserDefaults.standard.stringArray(forKey: DefaultsKeys.excludedApps) ?? []
             if excludedApps.contains(currentApp) {
                 return
             }
         }
-        
-        guard maxPressure > 0 else { return }
-        guard leftButtonDown else { return }
 
-        let now = ProcessInfo.processInfo.systemUptime
-        pressPeakPressure = max(pressPeakPressure, maxPressure)
-
-        if pressBaseline == nil {
-            pressBaseline = maxPressure
-            return
-        }
-
-        if now - pressStartedAt < warmupDuration {
-            pressBaseline = min(pressBaseline ?? maxPressure, maxPressure)
-            return
-        }
-
-        let baseline = max(min(pressBaseline ?? maxPressure, pressPeakPressure), 0.001)
-        pressBaseline = baseline
-        let ratio = pressPeakPressure / baseline
-        let delta = pressPeakPressure - baseline
-        // MTTouch.state is the touch phase (4 = touching, 5+ = lifting/lingering), not a force stage, so it can't signal force.
-        let forceDetected = ratio >= forceRatioThreshold && delta >= minimumForceDelta
-
-        guard forceDetected else { return }
+        guard detector.feed(pressure: maxPressure, at: now) else { return }
         guard !triggerInCurrentPress else { return }
         guard now - lastTriggerTime >= minimumTriggerGap else { return }
 
@@ -416,7 +386,7 @@ final class ForceClickMonitor: ObservableObject {
         lastTriggerTime = now
 
         let selectedText = selectionSnapshotForTriggerLocked(now: now)
-        let isCopyShortcut = isConfiguredCopyShortcutLocked()
+        let isCopyShortcut = Shortcut.isCopy
 
         DispatchQueue.main.async {
             let allowSyntheticFallback = !isCopyShortcut || selectedText == nil
@@ -426,10 +396,11 @@ final class ForceClickMonitor: ObservableObject {
             )
         }
 
+        let baseline = max(detector.baseline ?? 0, 0.001)
         TouchBroDebugLog.write(
             String(
                 format: "MT force detected (peak=%.1f b=%.1f d=%.1f r=%.2f s=%d t=%d) -> trigger now",
-                pressPeakPressure, baseline, delta, ratio, maxState, touchCount
+                detector.peak, baseline, detector.peak - baseline, detector.peak / baseline, maxState, touchCount
             )
         )
     }
@@ -450,7 +421,8 @@ enum TouchBroDebugLog {
         let line = "[\(timestamp)] \(message)\n"
 
         queue.async {
-            let url = URL(fileURLWithPath: "/tmp/TouchBro-debug.log")
+            // Per-user temp dir: a fixed name in the shared /tmp could be pre-planted as a symlink.
+            let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("TouchBro-debug.log")
             if let data = line.data(using: .utf8) {
                 if FileManager.default.fileExists(atPath: url.path) {
                     if let handle = try? FileHandle(forWritingTo: url) {

@@ -4,10 +4,6 @@ import AppKit
 import ServiceManagement
 import UniformTypeIdentifiers
 
-extension Notification.Name {
-    static let touchBroPermissionsChanged = Notification.Name("TouchBroPermissionsChanged")
-}
-
 struct SettingsView: View {
     @AppStorage(DefaultsKeys.shortcutKey) private var shortcutKey = "C"
     @AppStorage(DefaultsKeys.shortcutModifiers) private var shortcutModifiers = ShortcutModifiers.command.rawValue
@@ -82,7 +78,7 @@ struct SettingsView: View {
                 Link("GitHub", destination: URL(string: "https://github.com/wlo2/TouchBro")!)
                     .font(.footnote)
 
-                Text("v1.0.5")
+                Text("v" + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -135,7 +131,7 @@ private struct PermissionsView: View {
             }
             .buttonStyle(.bordered)
 
-            Text("TouchBro uses mouse event taps, so Input Monitoring is not required.")
+            Text("TouchBro uses mouse event monitors, so Input Monitoring is not required.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -179,11 +175,7 @@ private struct ExceptionsView: View {
                 Button("+ Add App") {
                     DispatchQueue.main.async {
                         let panel = NSOpenPanel()
-                        if #available(macOS 11.0, *) {
-                            panel.allowedContentTypes = [.application]
-                        } else {
-                            panel.allowedFileTypes = ["app"]
-                        }
+                        panel.allowedContentTypes = [.application]
                         panel.allowsMultipleSelection = false
                         panel.canChooseDirectories = false
                         panel.canChooseFiles = true
@@ -226,10 +218,6 @@ private struct ExceptionsView: View {
 }
 
 enum Permissions {
-    static var allRequiredGranted: Bool {
-        accessibilityGranted
-    }
-
     static var accessibilityGranted: Bool {
         // Some macOS versions report trusted status through only one of these APIs.
         if AXIsProcessTrusted() {
@@ -241,28 +229,20 @@ enum Permissions {
     }
 
     static func requestAccessibility() {
-        guard !accessibilityGranted else { return }
-        openAccessibilitySettings()
-    }
-
-    static func openAccessibilitySettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
-            return
-        }
+        guard !accessibilityGranted,
+              let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        else { return }
         NSWorkspace.shared.open(url)
-        NotificationCenter.default.post(name: .touchBroPermissionsChanged, object: nil)
     }
 
 }
 
 enum LaunchAtLogin {
     static var isEnabled: Bool {
-        guard #available(macOS 13.0, *) else { return false }
-        return SMAppService.mainApp.status == .enabled
+        SMAppService.mainApp.status == .enabled
     }
 
     static func setEnabled(_ enabled: Bool) -> Bool {
-        guard #available(macOS 13.0, *) else { return false }
         do {
             if enabled {
                 try SMAppService.mainApp.register()

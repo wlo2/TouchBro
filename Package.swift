@@ -20,5 +20,10 @@ let package = Package(
                 ])
             ]
         ),
+        .testTarget(
+            name: "TouchBroTests",
+            dependencies: ["TouchBro"],
+            path: "Tests"
+        ),
     ]
 )

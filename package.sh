@@ -1,4 +1,5 @@
 #!/bin/zsh
+set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -10,7 +11,17 @@ DMG_NAME="${APP_NAME}.dmg"
 ICON_SRC="icon.png"
 ICON_NAME="AppIcon"
 SIGN_APP="${SIGN_APP:-1}"
+# A stable certificate keeps the Accessibility grant valid across builds; ad-hoc signatures change every build.
+SIGN_IDENTITY="${SIGN_IDENTITY:-TouchBro Dev}"
 RESET_TCC="${RESET_TCC:-1}"
+ADHOC=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --adhoc) ADHOC=1 ;;
+        *) echo "Unknown option: $arg (supported: --adhoc)"; exit 1 ;;
+    esac
+done
 
 # 0. Stop running app instance
 pkill -x "$APP_NAME" || true
@@ -23,12 +34,7 @@ fi
 
 # 1. Build
 echo "Building..."
-swift build -c release -Xswiftc -D -Xswiftc APP_BUNDLE
-
-if [ $? -ne 0 ]; then
-    echo "Build failed."
-    exit 1
-fi
+swift build -c release -Xswiftc -D -Xswiftc APP_BUNDLE || { echo "Build failed."; exit 1; }
 
 # 2. Create .app structure
 echo "Creating ${APP_BUNDLE}..."
@@ -69,8 +75,17 @@ fi
 
 # 6. Optional signing
 if [ "$SIGN_APP" = "1" ]; then
-    echo "Signing (ad-hoc)..."
-    codesign --force --deep --timestamp=none --identifier com.example.TouchBro --sign - "${APP_BUNDLE}"
+    if [ "$ADHOC" = "1" ]; then
+        echo "Signing (ad-hoc): Accessibility must be re-granted after this build."
+        SIGN_WITH="-"
+    elif security find-certificate -c "$SIGN_IDENTITY" >/dev/null 2>&1; then
+        echo "Signing with '${SIGN_IDENTITY}'..."
+        SIGN_WITH="$SIGN_IDENTITY"
+    else
+        echo "No '${SIGN_IDENTITY}' certificate found. Create it (see README > Signing) or run with --adhoc."
+        exit 1
+    fi
+    codesign --force --deep --timestamp=none --identifier com.example.TouchBro --sign "$SIGN_WITH" "${APP_BUNDLE}"
 else
     rm -rf "${APP_BUNDLE}/Contents/_CodeSignature"
     echo "Skipping codesign (SIGN_APP=$SIGN_APP)."

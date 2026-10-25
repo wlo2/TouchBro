@@ -1,13 +1,16 @@
 import SwiftUI
 import AppKit
 
+// Plain AppKit entry point: a SwiftUI App needs a scene, and its placeholder
+// Settings scene showed up as an empty "TouchBro Settings" window.
 @main
-struct TouchBroApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-
-    var body: some Scene {
-        Settings {
-            EmptyView()
+enum TouchBroApp {
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        withExtendedLifetime(delegate) {
+            app.run()
         }
     }
 }
@@ -24,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         setupStatusItem()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            guard !Permissions.allRequiredGranted else { return }
+            guard !Permissions.accessibilityGranted else { return }
             SettingsWindowController.shared.show()
         }
     }
@@ -62,10 +65,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DefaultsKeys.debugLogging: false,
             DefaultsKeys.excludedApps: ["com.apple.finder"]
         ])
-
-        if defaults.object(forKey: DefaultsKeys.isEnabled) == nil {
-            defaults.set(true, forKey: DefaultsKeys.isEnabled)
-        }
     }
 
     private func setupStatusItem() {
@@ -112,9 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let isEnabled = defaults.bool(forKey: DefaultsKeys.isEnabled)
         enabledItem?.state = isEnabled ? .on : .off
 
-        let key = defaults.string(forKey: DefaultsKeys.shortcutKey) ?? "C"
-        let modifiersRaw = defaults.integer(forKey: DefaultsKeys.shortcutModifiers)
-        let modifiers = ShortcutModifiers(rawValue: modifiersRaw)
+        let (key, modifiers) = Shortcut.current
         let display = Shortcut.displayString(key: key, modifiers: modifiers)
         shortcutInfoItem?.title = "Force Click -> \(display)"
     }

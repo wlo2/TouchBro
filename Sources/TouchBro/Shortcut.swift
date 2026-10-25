@@ -54,6 +54,19 @@ enum Shortcut {
         "5": 23, "6": 22, "7": 26, "8": 28, "9": 25
     ]
 
+    /// The shortcut configured in Settings.
+    static var current: (key: String, modifiers: ShortcutModifiers) {
+        let defaults = UserDefaults.standard
+        let key = (defaults.string(forKey: DefaultsKeys.shortcutKey) ?? "C").uppercased()
+        return (key, ShortcutModifiers(rawValue: defaults.integer(forKey: DefaultsKeys.shortcutModifiers)))
+    }
+
+    /// Cmd+C is handled by writing the selection to the pasteboard instead of sending keys.
+    static var isCopy: Bool {
+        let shortcut = current
+        return shortcut.key == "C" && shortcut.modifiers == [.command]
+    }
+
     static func keyCode(for key: String) -> CGKeyCode? {
         let normalized = key.uppercased()
         return keyCodeMap[normalized]
@@ -74,12 +87,9 @@ enum ShortcutRunner {
         selectedTextOverride: String? = nil,
         allowSyntheticCopyFallback: Bool = true
     ) {
-        let defaults = UserDefaults.standard
-        let key = (defaults.string(forKey: DefaultsKeys.shortcutKey) ?? "C").uppercased()
-        let modifiersRaw = defaults.integer(forKey: DefaultsKeys.shortcutModifiers)
-        let modifiers = ShortcutModifiers(rawValue: modifiersRaw)
+        let (key, modifiers) = Shortcut.current
 
-        if key == "C", modifiers == [.command] {
+        if Shortcut.isCopy {
             if let selectedTextOverride, !selectedTextOverride.isEmpty {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(selectedTextOverride, forType: .string)
