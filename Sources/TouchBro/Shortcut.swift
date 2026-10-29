@@ -1,6 +1,7 @@
 import Foundation
 import ApplicationServices
 import AppKit
+import Carbon
 
 enum DefaultsKeys {
     static let shortcutKey = "shortcutKey"
@@ -43,6 +44,7 @@ enum Shortcut {
         ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
     )
 
+    // Key positions on a US keyboard, for keys the current layout doesn't have.
     private static let keyCodeMap: [String: CGKeyCode] = [
         "A": 0,  "B": 11, "C": 8,  "D": 2,  "E": 14,
         "F": 3,  "G": 5,  "H": 4,  "I": 34, "J": 38,
@@ -67,9 +69,38 @@ enum Shortcut {
         return shortcut.key == "C" && shortcut.modifiers == [.command]
     }
 
-    static func keyCode(for key: String) -> CGKeyCode? {
+    /// Key codes name physical keys, so the key is looked up in the current layout first:
+    /// on a German keyboard, the US code for Z types Y.
+    static func keyCode(for key: String, command: Bool) -> CGKeyCode? {
         let normalized = key.uppercased()
-        return keyCodeMap[normalized]
+        return layoutKeyCode(for: normalized, command: command) ?? keyCodeMap[normalized]
+    }
+
+    /// The key that types `key` (uppercased) in the layout macOS uses for shortcuts. Main thread only.
+    static func layoutKeyCode(for key: String, command: Bool) -> CGKeyCode? {
+        guard let source = TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let property = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
+        else { return nil }
+        let layoutData = Unmanaged<CFData>.fromOpaque(property).takeUnretainedValue() as Data
+        // Layouts can remap keys while Cmd is held; AZERTY puts digits on the number row.
+        let modifierState: UInt32 = command ? UInt32(cmdKey >> 8) : 0
+
+        return layoutData.withUnsafeBytes { bytes -> CGKeyCode? in
+            guard let layout = bytes.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return nil }
+            for code in UInt16(0)..<128 {
+                var deadKeyState: UInt32 = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+                var length = 0
+                let status = UCKeyTranslate(
+                    layout, code, UInt16(kUCKeyActionDown), modifierState, UInt32(LMGetKbdType()),
+                    OptionBits(kUCKeyTranslateNoDeadKeysMask), &deadKeyState, chars.count, &length, &chars
+                )
+                if status == noErr, String(utf16CodeUnits: chars, count: length).uppercased() == key {
+                    return CGKeyCode(code)
+                }
+            }
+            return nil
+        }
     }
 
     static func displayString(key: String, modifiers: ShortcutModifiers) -> String {
@@ -83,24 +114,17 @@ enum Shortcut {
 }
 
 enum ShortcutRunner {
-    static func postConfiguredShortcut(
-        selectedTextOverride: String? = nil,
-        allowSyntheticCopyFallback: Bool = true
-    ) {
-        let (key, modifiers) = Shortcut.current
-
-        if Shortcut.isCopy {
-            if let selectedTextOverride, !selectedTextOverride.isEmpty {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(selectedTextOverride, forType: .string)
-                return
-            }
-            if !allowSyntheticCopyFallback {
-                return
-            }
+    /// The click may already have cleared the selection, so for Cmd+C the text saved earlier is
+    /// written directly; without it, the keys are sent.
+    static func postConfiguredShortcut(selectedText: String?) {
+        if Shortcut.isCopy, let selectedText, !selectedText.isEmpty {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(selectedText, forType: .string)
+            return
         }
 
-        guard let keyCode = Shortcut.keyCode(for: key) else { return }
+        let (key, modifiers) = Shortcut.current
+        guard let keyCode = Shortcut.keyCode(for: key, command: modifiers.contains(.command)) else { return }
         post(keyCode: keyCode, modifiers: modifiers)
     }
 

@@ -23,7 +23,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         registerDefaults()
-        _ = monitor
         setupStatusItem()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {

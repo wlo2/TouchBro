@@ -57,15 +57,13 @@ final class ForceClickMonitor {
     private var lastLandingRefreshAt: TimeInterval = 0
     private var pressDragDistance: CGFloat = 0
 
-    private var globalLeftDownMonitor: Any?
-    private var globalLeftUpMonitor: Any?
-    private var globalLeftDragMonitor: Any?
+    private var mouseMonitor: Any?
     private var permissionPollTimer: DispatchSourceTimer?
     private var lastPermissionState: Bool?
 
     init() {
         TouchBroDebugLog.write("ForceClickMonitor init")
-        installButtonMonitors()
+        installMouseMonitor()
         installPermissionObservers()
 
         bridge.onFrame = { [weak self] maxPressure, maxState, touchCount, landing in
@@ -87,30 +85,19 @@ final class ForceClickMonitor {
         }
     }
 
-    private func installButtonMonitors() {
-        DispatchQueue.main.async {
-            if self.globalLeftDownMonitor == nil {
-                self.globalLeftDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] _ in
-                    self?.stateQueue.async {
-                        self?.beginPressLocked()
-                    }
-                }
-            }
-
-            if self.globalLeftDragMonitor == nil {
-                self.globalLeftDragMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDragged]) { [weak self] event in
+    private func installMouseMonitor() {
+        DispatchQueue.main.async { [weak self] in
+            self?.mouseMonitor = NSEvent.addGlobalMonitorForEvents(
+                matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]
+            ) { [weak self] event in
+                switch event.type {
+                case .leftMouseDown:
+                    self?.stateQueue.async { self?.beginPressLocked() }
+                case .leftMouseDragged:
                     let distance = hypot(event.deltaX, event.deltaY)
-                    self?.stateQueue.async {
-                        self?.trackDragLocked(distance: distance)
-                    }
-                }
-            }
-
-            if self.globalLeftUpMonitor == nil {
-                self.globalLeftUpMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] _ in
-                    self?.stateQueue.async {
-                        self?.endPressLocked()
-                    }
+                    self?.stateQueue.async { self?.trackDragLocked(distance: distance) }
+                default:
+                    self?.stateQueue.async { self?.endPressLocked() }
                 }
             }
         }
@@ -138,9 +125,7 @@ final class ForceClickMonitor {
         if granted {
             stopPermissionPollingLocked()
             bridge.start()
-            bridge.setCaptureEnabled(true)
         } else {
-            bridge.setCaptureEnabled(false)
             bridge.stop()
             startPermissionPollingLocked()
         }
@@ -366,14 +351,8 @@ final class ForceClickMonitor {
         lastTriggerTime = now
 
         let selectedText = selectedTextAtPressStart
-        let isCopyShortcut = Shortcut.isCopy
-
         DispatchQueue.main.async {
-            let allowSyntheticFallback = !isCopyShortcut || selectedText == nil
-            ShortcutRunner.postConfiguredShortcut(
-                selectedTextOverride: selectedText,
-                allowSyntheticCopyFallback: allowSyntheticFallback
-            )
+            ShortcutRunner.postConfiguredShortcut(selectedText: selectedText)
         }
 
         let baseline = max(detector.baseline ?? 0, 0.001)

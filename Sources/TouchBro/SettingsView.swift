@@ -223,12 +223,15 @@ enum Permissions {
     }
 
     static func requestAccessibility() {
-        guard !accessibilityGranted,
-              let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        guard !accessibilityGranted else { return }
+        // The prompt is what adds TouchBro to the Accessibility list. macOS may not show it again
+        // after it was dismissed, so the page is opened too.
+        let prompt = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        AXIsProcessTrustedWithOptions([prompt: true] as CFDictionary)
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
         else { return }
         NSWorkspace.shared.open(url)
     }
-
 }
 
 enum LaunchAtLogin {
@@ -236,16 +239,9 @@ enum LaunchAtLogin {
         SMAppService.mainApp.status == .enabled
     }
 
+    /// Returns the real state afterwards, so a failed change flips the toggle back.
     static func setEnabled(_ enabled: Bool) -> Bool {
-        do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
-        } catch {
-            return SMAppService.mainApp.status == .enabled
-        }
-        return SMAppService.mainApp.status == .enabled
+        _ = try? (enabled ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister())
+        return isEnabled
     }
 }

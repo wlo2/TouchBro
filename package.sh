@@ -35,7 +35,7 @@ fi
 
 # 1. Build
 echo "Building..."
-swift build -c release -Xswiftc -D -Xswiftc APP_BUNDLE || { echo "Build failed."; exit 1; }
+swift build -c release || { echo "Build failed."; exit 1; }
 
 # 2. Create .app structure
 echo "Creating ${APP_BUNDLE}..."

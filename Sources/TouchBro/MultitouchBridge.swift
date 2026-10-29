@@ -1,7 +1,30 @@
 import AppKit
 import IOKit
+import os
 
 typealias MTDeviceRef = UnsafeMutableRawPointer
+
+/// Picks the frames worth processing: only from the trackpad a finger last landed on, at most one per 30 ms.
+struct FrameGate {
+    static let minimumInterval: TimeInterval = 0.03
+
+    private var activeDevice: UInt?
+    private var lastAdmitTime: TimeInterval = 0
+
+    mutating func admit(device: UInt, landing: Bool, at now: TimeInterval) -> Bool {
+        // A finger resting on another trackpad must not set the baseline of a click on this one.
+        if landing || activeDevice == nil {
+            activeDevice = device
+        }
+        guard device == activeDevice else { return false }
+        // Landing frames are short-lived, so they skip the throttle.
+        if !landing && now - lastAdmitTime < Self.minimumInterval {
+            return false
+        }
+        lastAdmitTime = now
+        return true
+    }
+}
 
 private struct MTPoint {
     var x: Float
@@ -63,10 +86,10 @@ final class MultitouchBridge {
 
     /// (max pressure, max touch state, touch count, a finger is landing)
     var onFrame: ((Float, Int32, Int, Bool) -> Void)?
-    private let callbackQueue = DispatchQueue(label: "touchbro.multitouch.callback", qos: .background)
     private let stateQueue = DispatchQueue(label: "touchbro.multitouch.state", qos: .utility)
-    private var captureEnabled = false
-    private var lastDispatchTime: Double = 0
+    // A lock, not stateQueue: frames arrive on each device's own thread, and MTDeviceStop (run on
+    // stateQueue) waits for that thread, so a frame waiting on stateQueue would hang both forever.
+    private let frameGate = OSAllocatedUnfairLock(initialState: FrameGate())
 
     // The list owns the devices; keeping it alive keeps every device ref valid.
     private var deviceList: CFArray?
@@ -79,12 +102,6 @@ final class MultitouchBridge {
 
     private init() {
         watchForDeviceChanges()
-    }
-
-    func setCaptureEnabled(_ enabled: Bool) {
-        stateQueue.async {
-            self.captureEnabled = enabled
-        }
     }
 
     func start() {
@@ -125,8 +142,8 @@ final class MultitouchBridge {
             MTUnregisterContactFrameCallback(device, multitouchFrameCallback)
             _ = MTDeviceStop(device)
         }
-        captureEnabled = false
-        lastDispatchTime = 0
+        // The next start brings new device refs.
+        frameGate.withLock { $0 = FrameGate() }
         devices = []
         deviceList = nil
         isRunning = false
@@ -170,15 +187,13 @@ final class MultitouchBridge {
         // A device needs a moment after wake or connect before it delivers frames.
         stateQueue.asyncAfter(deadline: .now() + 1.0) {
             guard self.wantsRunning else { return }
-            let capture = self.captureEnabled
             self.stopLocked()
             self.startLocked()
-            self.captureEnabled = capture
             TouchBroDebugLog.write("MT bridge: restarted (\(reason))")
         }
     }
 
-    fileprivate func onContactFrame(touchesRaw: UnsafeMutableRawPointer?, count: Int32) {
+    fileprivate func onContactFrame(device: MTDeviceRef?, touchesRaw: UnsafeMutableRawPointer?, count: Int32) {
         guard let touchesRaw, count > 0 else { return }
 
         let touches = touchesRaw.bindMemory(to: MTTouch.self, capacity: Int(count))
@@ -204,28 +219,12 @@ final class MultitouchBridge {
 
         guard maxPressure > 0 || landing else { return }
 
-        let shouldProcess: Bool = stateQueue.sync {
-            guard captureEnabled else {
-                return false
-            }
+        // Uptime only moves forward; the wall clock can jump back (e.g. a time sync after wake).
+        let now = ProcessInfo.processInfo.systemUptime
+        let deviceID = UInt(bitPattern: device)
+        guard frameGate.withLock({ [landing] in $0.admit(device: deviceID, landing: landing, at: now) }) else { return }
 
-            // Landing frames are short-lived, so they skip the throttle.
-            // Uptime only moves forward; the wall clock can jump back (e.g. a time sync after wake).
-            let now = ProcessInfo.processInfo.systemUptime
-            if !landing && now - lastDispatchTime < 0.03 {
-                return false
-            }
-            lastDispatchTime = now
-            return true
-        }
-
-        guard shouldProcess else {
-            return
-        }
-
-        callbackQueue.async { [weak self] in
-            self?.onFrame?(maxPressure, maxState, touchCount, landing)
-        }
+        onFrame?(maxPressure, maxState, touchCount, landing)
     }
 }
 
@@ -235,8 +234,7 @@ private func drainIterator(_ iterator: io_iterator_t) {
     }
 }
 
-// The bridge is a singleton, so the C callback reaches it directly; a frame that
-// arrives after stop() is dropped because capture is off by then.
-private let multitouchFrameCallback: MTFrameCallbackFunction = { _, touchesRaw, count, _, _ in
-    MultitouchBridge.shared.onContactFrame(touchesRaw: touchesRaw, count: count)
+// The bridge is a singleton, so the C callback reaches it directly.
+private let multitouchFrameCallback: MTFrameCallbackFunction = { device, touchesRaw, count, _, _ in
+    MultitouchBridge.shared.onContactFrame(device: device, touchesRaw: touchesRaw, count: count)
 }
